@@ -26,3 +26,18 @@ dependencies {
 tasks.withType<KotlinCompile> {
     kotlinOptions.jvmTarget = "1.8"
 }
+
+task<Jar>("fatJar") {
+    manifest {
+        attributes(mapOf("Main-Class" to "clockvapor.telegram.hangman.HangmanTelegramBot"))
+    }
+    from(configurations.runtimeClasspath
+        .filter { it.exists() }
+        .map { if (it.isDirectory) it else zipTree(it) }
+    )
+    with(tasks["jar"] as CopySpec)
+}
+
+task("stage") {
+    dependsOn("clean", "fatJar")
+}
