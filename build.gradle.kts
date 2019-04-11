@@ -14,6 +14,7 @@ repositories {
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
+    implementation(kotlin("test-junit"))
     implementation("com.github.clockvapor", "telegram-utils", "0.0.1")
     implementation("com.xenomachina", "kotlin-argparser", "2.0.7")
     implementation("io.github.seik", "kotlin-telegram-bot", "0.3.5") {

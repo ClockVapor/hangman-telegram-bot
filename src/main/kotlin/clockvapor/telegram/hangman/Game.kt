@@ -1,11 +1,12 @@
 package clockvapor.telegram.hangman
 
 class Game(val word: String) {
+    private val wordParts: List<String>
     private val guessedLetters = linkedSetOf<Char>()
     private val wrongLetters = linkedSetOf<Char>()
     private val numMissingLetters: Int
-        get() = word.sumBy {
-            if (it.isLetterOrDigit() && it.toUpperCase() !in guessedLetters) 1
+        get() = wordParts.sumBy {
+            if (it.length == 1 && it[0].isLetterOrDigit() && it[0].toUpperCase() !in guessedLetters) 1
             else 0
         }
 
@@ -16,11 +17,25 @@ class Game(val word: String) {
             else -> State.CONTINUE
         }
 
+    init {
+        val tempWordParts = arrayListOf<String>()
+        var i = 0
+        while (i < word.length) {
+            if (word[i].isLowSurrogate()) {
+                tempWordParts += word.substring(i - 1, i + 1)
+            } else if (!word[i].isSurrogate()) {
+                tempWordParts += word[i].toString()
+            }
+            i++
+        }
+        wordParts = tempWordParts
+    }
+
     fun guess(char: Char) {
         if (char.isLetterOrDigit()) {
             val c = char.toUpperCase()
             guessedLetters += c
-            if (!word.contains(c, ignoreCase = true)) {
+            if (wordParts.none { it.equals(c.toString(), ignoreCase = true) }) {
                 wrongLetters += c
             }
         }
@@ -31,8 +46,8 @@ class Game(val word: String) {
     }
 
     fun getWordString(): String =
-        word.map {
-            if (it.isLetterOrDigit() && it.toUpperCase() !in guessedLetters) '_'
+        wordParts.map {
+            if (it.length == 1 && it[0].isLetterOrDigit() && it[0].toUpperCase() !in guessedLetters) "_"
             else it
         }.joinToString(" ")
 
