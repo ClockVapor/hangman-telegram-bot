@@ -110,7 +110,10 @@ class HangmanTelegramBot(private val token: String) {
             if (guesses.isEmpty()) {
                 bot.sendMessage(chatId, "Please guess some letters or digits.", replyToMessageId = message.messageId)
             } else {
-                guesses.forEach(game::guess)
+                for (guess in guesses) {
+                    game.guess(guess)
+                    if (game.state != Game.State.CONTINUE) break
+                }
                 handleGame(bot, chatId, message.messageId, game)
             }
         }

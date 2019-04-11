@@ -21,4 +21,10 @@ class GameTest {
         val game = Game("\uD83D\uDE02hello") // crying laughing emoji
         Assert.assertEquals("\uD83D\uDE02 _ _ _ _ _", game.getWordString())
     }
+
+//    @Test
+//    fun testEmoji4() {
+//        val game = Game("\uD83D\uDC4D\uD83C\uDFFE") // dark-skinned thumbs up
+//        Assert.assertEquals("\uD83D\uDC4D\uD83C\uDFFE", game.getWordString())
+//    }
 }
