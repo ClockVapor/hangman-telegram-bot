@@ -54,7 +54,7 @@ class HangmanTelegramBot(private val token: String) {
     private fun doNewGameCommand(bot: Bot, update: Update) {
         val message = update.message!!
         val chatId = message.chat.id
-        if (games.containsKey(chatId)) {
+        if (chatId in games) {
             bot.sendMessage(chatId, GAME_IN_PROGRESS, replyToMessageId = message.messageId)
         } else {
             val game = Game(fetchRandomWord())
@@ -67,7 +67,7 @@ class HangmanTelegramBot(private val token: String) {
     private fun doNewCustomGameCommand(bot: Bot, update: Update) {
         val message = update.message!!
         val chatId = message.chat.id
-        if (games.containsKey(chatId)) {
+        if (chatId in games) {
             bot.sendMessage(chatId, GAME_IN_PROGRESS, replyToMessageId = message.messageId)
         } else {
             val (response, _) = bot.sendMessage(message.from!!.id, "What word do you want to use?")
@@ -104,30 +104,14 @@ class HangmanTelegramBot(private val token: String) {
             bot.sendMessage(chatId, NO_GAME_IN_PROGRESS, replyToMessageId = message.messageId)
         } else {
             val command = message.entities!!.first()
-            val letter = message.text!!.substring(command.offset + command.length).trim()
-                .takeIf { it.length == 1 }
-                ?.firstOrNull()
-                ?.takeIf { it.isLetterOrDigit() }
-            if (letter == null) {
-                bot.sendMessage(chatId, "Please guess a letter or digit.", replyToMessageId = message.messageId)
+            val guesses = message.text!!.substring(command.offset + command.length).trim()
+                .filter { it.isLetterOrDigit() }
+                .toList()
+            if (guesses.isEmpty()) {
+                bot.sendMessage(chatId, "Please guess some letters or digits.", replyToMessageId = message.messageId)
             } else {
-                when (game.guessLetter(letter)) {
-                    Game.State.CONTINUE ->
-                        bot.sendMessage(chatId, game.toString(), replyToMessageId = message.messageId,
-                            parseMode = ParseMode.MARKDOWN)
-
-                    Game.State.WIN -> {
-                        bot.sendMessage(chatId, "You win!\n\n$game", replyToMessageId = message.messageId,
-                            parseMode = ParseMode.MARKDOWN)
-                        games.remove(chatId)
-                    }
-
-                    Game.State.LOSE -> {
-                        bot.sendMessage(chatId, "You lose! The word was `${game.word}`.\n\n$game",
-                            replyToMessageId = message.messageId, parseMode = ParseMode.MARKDOWN)
-                        games.remove(chatId)
-                    }
-                }
+                guesses.forEach(game::guess)
+                handleGame(bot, chatId, message.messageId, game)
             }
         }
     }
@@ -136,13 +120,13 @@ class HangmanTelegramBot(private val token: String) {
         val message = update.message!!
         if (message.chat.type == "private" && message.from!!.id in customWordGivers) {
             val targetChatId = customWordGivers.remove(message.from!!.id)!!
-            if (games.containsKey(targetChatId)) {
+            if (targetChatId in games) {
                 bot.sendMessage(message.chat.id, "It looks like there's already a game going on in that group.")
             } else {
                 val word = message.text!!.trim()
                 val game = Game(word)
                 games[targetChatId] = game
-                bot.sendMessage(targetChatId, game.toString(), parseMode = ParseMode.MARKDOWN)
+                handleGame(bot, targetChatId, null, game)
             }
         }
     }
@@ -150,6 +134,24 @@ class HangmanTelegramBot(private val token: String) {
     private fun fetchRandomWord(): String {
         val url = tryCreateUrl("https://en.wiktionary.org/wiki/Special:RandomInCategory/English_lemmas")
         return Jsoup.parse(wget(url)).getElementById("firstHeading").text().trim()
+    }
+
+    private fun handleGame(bot: Bot, chatId: Long, replyToMessageId: Long?, game: Game) {
+        val text = when (game.state) {
+            Game.State.CONTINUE -> game.toString()
+
+            Game.State.WIN -> {
+                games -= chatId
+                "You win!\n\n$game"
+            }
+
+            Game.State.LOSE -> {
+                games -= chatId
+                "You lose! The word was `${game.word}`.\n\n$game"
+            }
+        }
+
+        bot.sendMessage(chatId, text, replyToMessageId = replyToMessageId, parseMode = ParseMode.MARKDOWN)
     }
 
     companion object {

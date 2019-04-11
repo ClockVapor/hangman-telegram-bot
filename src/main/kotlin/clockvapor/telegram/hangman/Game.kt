@@ -3,22 +3,26 @@ package clockvapor.telegram.hangman
 class Game(val word: String) {
     private val guessedLetters = linkedSetOf<Char>()
     private val wrongLetters = linkedSetOf<Char>()
-    private val missingLetters: Int
+    private val numMissingLetters: Int
         get() = word.sumBy {
             if (it.isLetterOrDigit() && it.toUpperCase() !in guessedLetters) 1
             else 0
         }
 
-    fun guessLetter(letter: Char): State {
-        val l = letter.toUpperCase()
-        guessedLetters += l
-        if (!word.contains(l, ignoreCase = true)) {
-            wrongLetters += l
-        }
-        return when {
+    val state: State
+        get() = when {
             wrongLetters.size > 5 -> State.LOSE
-            missingLetters < 1 -> State.WIN
+            numMissingLetters < 1 -> State.WIN
             else -> State.CONTINUE
+        }
+
+    fun guess(char: Char) {
+        if (char.isLetterOrDigit()) {
+            val c = char.toUpperCase()
+            guessedLetters += c
+            if (!word.contains(c, ignoreCase = true)) {
+                wrongLetters += c
+            }
         }
     }
 
@@ -26,18 +30,16 @@ class Game(val word: String) {
         return "```${getPersonString()}\n\n${getWordString()}\n\n${getWrongLettersString()}```"
     }
 
-    private fun getWordString(): String =
+    fun getWordString(): String =
         word.map {
-            if (it.isLetterOrDigit()) {
-                if (guessedLetters.contains(it.toUpperCase())) it
-                else '_'
-            } else it
+            if (it.isLetterOrDigit() && it.toUpperCase() !in guessedLetters) '_'
+            else it
         }.joinToString(" ")
 
-    private fun getWrongLettersString(): String =
+    fun getWrongLettersString(): String =
         wrongLetters.joinToString(" ")
 
-    private fun getPersonString(): String = when (wrongLetters.size) {
+    fun getPersonString(): String = when (wrongLetters.size) {
         0 -> """
              ____
             |    |
