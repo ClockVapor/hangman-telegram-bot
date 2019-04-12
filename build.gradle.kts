@@ -13,6 +13,8 @@ repositories {
 }
 
 dependencies {
+    val jacksonVersion = property("jackson.version") as String
+
     implementation(kotlin("stdlib-jdk8"))
     implementation(kotlin("test-junit"))
     implementation("com.github.clockvapor", "telegram-utils", "0.0.1")
@@ -22,6 +24,8 @@ dependencies {
         exclude("io.github.seik.kotlin-telegram-bot", "dispatcher")
     }
     implementation("org.jsoup", "jsoup", "1.11.3")
+    compile("com.fasterxml.jackson.core", "jackson-core", jacksonVersion)
+    compile("com.fasterxml.jackson.core", "jackson-databind", jacksonVersion)
 }
 
 tasks.withType<KotlinCompile> {

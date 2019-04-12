@@ -1,6 +1,7 @@
 package clockvapor.telegram.hangman
 
 import clockvapor.telegram.trySuccessful
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.xenomachina.argparser.ArgParser
 import com.xenomachina.argparser.mainBody
 import me.ivmg.telegram.Bot
@@ -57,10 +58,24 @@ class HangmanTelegramBot(private val token: String) {
         if (chatId in games) {
             bot.sendMessage(chatId, GAME_IN_PROGRESS, replyToMessageId = message.messageId)
         } else {
-            val game = Game(fetchRandomWord())
-            games[chatId] = game
-            bot.sendMessage(chatId, game.toString(), replyToMessageId = message.messageId,
-                parseMode = ParseMode.MARKDOWN)
+            val command = message.entities!![0]
+            val source = message.text!!.substring(command.offset + command.length).trim()
+            val word = when {
+                source.isBlank() -> fetchRandomWordWiktionary()
+                source == "wiktionary" -> fetchRandomWordWiktionary()
+                source == "urbandictionary" -> fetchRandomWordUrbanDictionary()
+                else -> null
+            }
+            if (word == null) {
+                bot.sendMessage(chatId,
+                    "Please give one of the following word sources: `wiktionary`, `urbandictionary`. " +
+                    "If nothing is given, `wiktionary` will be used by default.", parseMode = ParseMode.MARKDOWN)
+            } else {
+                val game = Game(word)
+                games[chatId] = game
+                bot.sendMessage(chatId, game.toString(), replyToMessageId = message.messageId,
+                    parseMode = ParseMode.MARKDOWN)
+            }
         }
     }
 
@@ -134,9 +149,16 @@ class HangmanTelegramBot(private val token: String) {
         }
     }
 
-    private fun fetchRandomWord(): String {
+    private fun fetchRandomWordWiktionary(): String {
         val url = tryCreateUrl("https://en.wiktionary.org/wiki/Special:RandomInCategory/English_lemmas")
         return Jsoup.parse(wget(url)).getElementById("firstHeading").text().trim()
+    }
+
+    private fun fetchRandomWordUrbanDictionary(): String {
+        val url = tryCreateUrl("https://api.urbandictionary.com/v0/random")
+        val jsonString = wget(url)
+        val json = ObjectMapper().readTree(jsonString)
+        return json["list"].elements().asSequence().toList().random()["word"].asText()
     }
 
     private fun handleGame(bot: Bot, chatId: Long, replyToMessageId: Long?, game: Game) {
